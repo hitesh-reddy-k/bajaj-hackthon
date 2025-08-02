@@ -4,7 +4,7 @@ const path = require('path');
 const { handleQuery } = require('../controller/quarycontroller');
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.post('/query', upload.array('documents'), handleQuery);
 
