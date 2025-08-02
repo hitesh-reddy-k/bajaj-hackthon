@@ -6,23 +6,24 @@ const { queryOpenRouter } = require('../utilites/huggingface');
 exports.handleQuery = async (req, res) => {
   try {
     const uploadedFiles = req.files || [];
-    const documentsRaw = req.body.documents;
+    const rawDocuments = req.body.documents;
     const rawQuestions = req.body.questions;
 
-    // Parse documents array (from remote URLs)
+    // Parse documents (remote file URLs)
     let documentUrls = [];
-    if (documentsRaw) {
+    if (rawDocuments) {
       try {
-        documentUrls = JSON.parse(documentsRaw);
-        if (!Array.isArray(documentUrls)) {
+        const parsed = JSON.parse(rawDocuments);
+        if (!Array.isArray(parsed)) {
           return res.status(400).json({ error: 'documents must be a JSON array of URLs.' });
         }
+        documentUrls = parsed;
       } catch (e) {
-        return res.status(400).json({ error: 'documents must be valid JSON.' });
+        return res.status(400).json({ error: 'Invalid JSON in documents field.' });
       }
     }
 
-    // Parse questions array or comma-separated string
+    // Parse questions (array or comma-separated string)
     let questions = [];
     if (Array.isArray(rawQuestions)) {
       questions = rawQuestions;
@@ -41,7 +42,6 @@ exports.handleQuery = async (req, res) => {
       return res.status(400).json({ error: 'No valid questions provided.' });
     }
 
-    // Load all files (uploaded and remote)
     const buffersToProcess = [];
 
     // Uploaded files
@@ -62,9 +62,8 @@ exports.handleQuery = async (req, res) => {
       }
     }
 
-    // Extract text from all files
+    // Extract text
     let fullContent = '';
-
     for (const file of buffersToProcess) {
       if (file.mimetype.includes('pdf')) {
         const data = await pdf(file.buffer);
@@ -80,16 +79,18 @@ exports.handleQuery = async (req, res) => {
       }
     }
 
-    // Chunk text (for token safety)
+    // Split into chunks (optional, depending on model input limits)
     const chunks = fullContent.match(/(.|\s){1,1000}/g) || [fullContent];
-    const answers = [];
 
+    // Answer questions
+    const answers = [];
     for (const question of questions) {
       const answer = await queryOpenRouter(chunks, question);
       answers.push({ question, answer });
     }
 
     return res.status(200).json({ answers });
+
   } catch (err) {
     console.error('Internal error:', err);
     return res.status(500).json({
@@ -97,4 +98,4 @@ exports.handleQuery = async (req, res) => {
       details: err.message
     });
   }
-}
+};
