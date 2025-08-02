@@ -6,55 +6,81 @@ const { queryOpenRouter } = require('../utilites/huggingface');
 exports.handleQuery = async (req, res) => {
   try {
     const uploadedFiles = req.files || [];
-    const documents = req.body.documents ? JSON.parse(req.body.documents) : [];
+    const documentsRaw = req.body.documents;
     const rawQuestions = req.body.questions;
 
-    // Parse questions
+    // Parse documents array (from remote URLs)
+    let documentUrls = [];
+    if (documentsRaw) {
+      try {
+        documentUrls = JSON.parse(documentsRaw);
+        if (!Array.isArray(documentUrls)) {
+          return res.status(400).json({ error: 'documents must be a JSON array of URLs.' });
+        }
+      } catch (e) {
+        return res.status(400).json({ error: 'documents must be valid JSON.' });
+      }
+    }
+
+    // Parse questions array or comma-separated string
     let questions = [];
     if (Array.isArray(rawQuestions)) {
       questions = rawQuestions;
     } else if (typeof rawQuestions === 'string') {
       try {
         const parsed = JSON.parse(rawQuestions);
-        questions = Array.isArray(parsed) ? parsed : rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
+        questions = Array.isArray(parsed)
+          ? parsed
+          : rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
       } catch {
         questions = rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
       }
-    } else {
-      return res.status(400).json({ error: 'Questions must be a string or an array.' });
     }
 
     if (!questions.length) {
-      return res.status(400).json({ error: 'No valid questions provided' });
+      return res.status(400).json({ error: 'No valid questions provided.' });
     }
 
+    // Load all files (uploaded and remote)
     const buffersToProcess = [];
 
-    // Process uploaded files in memory
+    // Uploaded files
     for (const file of uploadedFiles) {
       buffersToProcess.push({ buffer: file.buffer, mimetype: file.mimetype });
     }
 
-    // Process remote URLs
-    for (const url of documents) {
-      const response = await axios.get(url, { responseType: 'arraybuffer' });
-      const contentType = response.headers['content-type'];
-      buffersToProcess.push({ buffer: response.data, mimetype: contentType });
+    // Remote files from URLs
+    for (const url of documentUrls) {
+      try {
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        buffersToProcess.push({
+          buffer: response.data,
+          mimetype: response.headers['content-type']
+        });
+      } catch (err) {
+        console.warn(`Failed to download ${url}: ${err.message}`);
+      }
     }
 
+    // Extract text from all files
     let fullContent = '';
 
     for (const file of buffersToProcess) {
       if (file.mimetype.includes('pdf')) {
         const data = await pdf(file.buffer);
-        fullContent += data.text;
-      } else if (file.mimetype.includes('word') || file.mimetype.includes('officedocument')) {
+        fullContent += data.text + '\n';
+      } else if (
+        file.mimetype.includes('word') ||
+        file.mimetype.includes('officedocument')
+      ) {
         const result = await mammoth.extractRawText({ buffer: file.buffer });
-        fullContent += result.value;
+        fullContent += result.value + '\n';
+      } else {
+        console.warn('Unsupported MIME type:', file.mimetype);
       }
     }
 
-    // Chunk text and query model
+    // Chunk text (for token safety)
     const chunks = fullContent.match(/(.|\s){1,1000}/g) || [fullContent];
     const answers = [];
 
@@ -64,9 +90,11 @@ exports.handleQuery = async (req, res) => {
     }
 
     return res.status(200).json({ answers });
-
   } catch (err) {
-    console.error('Error:', err.message);
-    return res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    console.error('Internal error:', err);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      details: err.message
+    });
   }
-}
+};
