@@ -97,4 +97,4 @@ exports.handleQuery = async (req, res) => {
       details: err.message
     });
   }
-};
+}
