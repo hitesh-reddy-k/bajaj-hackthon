@@ -6,6 +6,6 @@ const { handleQuery } = require('../controller/quarycontroller');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.post('/query', upload.array('documents'), handleQuery);
+router.post('/hackrx/run', upload.array('documents'), handleQuery);
 
 module.exports = router;
