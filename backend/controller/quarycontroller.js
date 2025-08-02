@@ -1,77 +1,66 @@
-const fs = require('fs');
-const path = require('path');
 const axios = require('axios');
-const { extractTextFromPDF, extractTextFromDocx } = require('../utilites/extracttext');
+const mammoth = require('mammoth');
+const pdf = require('pdf-parse');
 const { queryOpenRouter } = require('../utilites/huggingface');
 
 exports.handleQuery = async (req, res) => {
   try {
     const uploadedFiles = req.files || [];
-    const documents = req.body.urls ? JSON.parse(req.body.urls) : [];
+    const documents = req.body.documents ? JSON.parse(req.body.documents) : [];
     const rawQuestions = req.body.questions;
 
-   let questions = [];
-
-if (Array.isArray(rawQuestions)) {
-  questions = rawQuestions;
-} else if (typeof rawQuestions === 'string') {
-  try {
-    const parsed = JSON.parse(rawQuestions);
-    questions = Array.isArray(parsed) ? parsed : rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
-  } catch {
-    questions = rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
-  }
-} else {
-  return res.status(400).json({ error: 'Questions must be a string or an array.' });
-}
-
+    // Parse questions
+    let questions = [];
+    if (Array.isArray(rawQuestions)) {
+      questions = rawQuestions;
+    } else if (typeof rawQuestions === 'string') {
+      try {
+        const parsed = JSON.parse(rawQuestions);
+        questions = Array.isArray(parsed) ? parsed : rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
+      } catch {
+        questions = rawQuestions.split(',').map(q => q.trim()).filter(Boolean);
+      }
+    } else {
+      return res.status(400).json({ error: 'Questions must be a string or an array.' });
+    }
 
     if (!questions.length) {
       return res.status(400).json({ error: 'No valid questions provided' });
     }
 
-    const filesToProcess = [];
+    const buffersToProcess = [];
 
-    // Process uploaded files
+    // Process uploaded files in memory
     for (const file of uploadedFiles) {
-      const filePath = path.resolve(file.path);
-      filesToProcess.push({ path: filePath, mimetype: file.mimetype, temp: true });
+      buffersToProcess.push({ buffer: file.buffer, mimetype: file.mimetype });
     }
 
-    // Download and save files from URLs
+    // Process remote URLs
     for (const url of documents) {
       const response = await axios.get(url, { responseType: 'arraybuffer' });
-      const ext = path.extname(url).split('?')[0] || '.pdf';
-      const filename = `downloaded_${Date.now()}${ext}`;
-      const tempPath = path.join('uploads', filename);
-      fs.writeFileSync(tempPath, response.data);
-      const mimetype = ext.includes('pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      filesToProcess.push({ path: tempPath, mimetype, temp: true });
+      const contentType = response.headers['content-type'];
+      buffersToProcess.push({ buffer: response.data, mimetype: contentType });
     }
 
     let fullContent = '';
 
-    for (const file of filesToProcess) {
+    for (const file of buffersToProcess) {
       if (file.mimetype.includes('pdf')) {
-        fullContent += await extractTextFromPDF(file.path);
-      } else if (file.mimetype.includes('word')) {
-        fullContent += await extractTextFromDocx(file.path);
+        const data = await pdf(file.buffer);
+        fullContent += data.text;
+      } else if (file.mimetype.includes('word') || file.mimetype.includes('officedocument')) {
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        fullContent += result.value;
       }
     }
 
-    // Chunk and send to OpenRouter
-    const CHUNK_SIZE = 1000;
+    // Chunk text and query model
     const chunks = fullContent.match(/(.|\s){1,1000}/g) || [fullContent];
     const answers = [];
 
-    for (let question of questions) {
+    for (const question of questions) {
       const answer = await queryOpenRouter(chunks, question);
       answers.push({ question, answer });
-    }
-
-    // Cleanup temporary files
-    for (const file of filesToProcess) {
-      if (file.temp) fs.unlinkSync(file.path);
     }
 
     return res.status(200).json({ answers });
