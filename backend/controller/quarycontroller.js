@@ -6,15 +6,35 @@ const { queryOpenRouter } = require('../utilites/huggingface');
 exports.handleQuery = async (req, res) => {
   try {
     const uploadedFiles = req.files || [];
-    const documents = req.body.documents;
+    const rawDocuments = req.body.documents;
     const rawQuestions = req.body.questions;
 
-    // ✅ Validate documents: must be array of URLs
-    if (!Array.isArray(documents)) {
-      return res.status(400).json({ error: 'documents must be a JSON array of URLs.' });
+    // ✅ Normalize `documents` to array
+    let documentUrls = [];
+
+    if (typeof rawDocuments === 'string') {
+      try {
+        const parsed = JSON.parse(rawDocuments);
+        if (Array.isArray(parsed)) {
+          documentUrls = parsed;
+        } else {
+          // If it's just a plain string URL, use it
+          documentUrls = [rawDocuments];
+        }
+      } catch {
+        // Not JSON, treat as single URL string
+        documentUrls = [rawDocuments];
+      }
+    } else if (Array.isArray(rawDocuments)) {
+      documentUrls = rawDocuments;
     }
 
-    // ✅ Parse questions (array or comma-separated string)
+    // ✅ Validate
+    if (!documentUrls.length || !documentUrls.every(url => typeof url === 'string')) {
+      return res.status(400).json({ error: 'documents must be a URL string or an array of URLs.' });
+    }
+
+    // ✅ Parse questions
     let questions = [];
     if (Array.isArray(rawQuestions)) {
       questions = rawQuestions;
@@ -35,13 +55,13 @@ exports.handleQuery = async (req, res) => {
 
     const buffersToProcess = [];
 
-    // ✅ Uploaded local files
+    // ✅ Local uploaded files
     for (const file of uploadedFiles) {
       buffersToProcess.push({ buffer: file.buffer, mimetype: file.mimetype });
     }
 
-    // ✅ Remote files (via URLs in documents array)
-    for (const url of documents) {
+    // ✅ Download remote files
+    for (const url of documentUrls) {
       try {
         const response = await axios.get(url, { responseType: 'arraybuffer' });
         buffersToProcess.push({
@@ -70,10 +90,10 @@ exports.handleQuery = async (req, res) => {
       }
     }
 
-    // ✅ Chunk the content for AI model
+    // ✅ Chunk for model
     const chunks = fullContent.match(/(.|\s){1,1000}/g) || [fullContent];
 
-    // ✅ Answer each question
+    // ✅ Ask questions
     const answers = [];
     for (const question of questions) {
       const answer = await queryOpenRouter(chunks, question);
