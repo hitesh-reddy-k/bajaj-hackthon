@@ -69,4 +69,4 @@ exports.handleQuery = async (req, res) => {
     console.error('Error:', err.message);
     return res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
-};
+}
