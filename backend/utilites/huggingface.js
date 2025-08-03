@@ -25,7 +25,7 @@ exports.queryOpenRouter = async (textChunks, question) => {
   const headers = {
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://bajaj-hackthon-y5np.vercel.app/', // change if deployed
+    'HTTP-Referer': 'https://bajaj-hackthon.vercel.app/', // change if deployed
     'X-Title': 'GraphRAG AI'
   };
 
