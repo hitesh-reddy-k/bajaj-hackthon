@@ -94,13 +94,11 @@ exports.handleQuery = async (req, res) => {
     const chunks = fullContent.match(/(.|\s){1,1000}/g) || [fullContent];
 
     // ✅ Ask questions
-  const answers = [];
-for (const question of questions) {
-  const answer = await queryOpenRouter(chunks, question);
-  answers.push(answer); // Only the answer text
-}
-return res.status(200).json({ answers });
-
+    const answers = [];
+    for (const question of questions) {
+      const answer = await queryOpenRouter(chunks, question);
+      answers.push({ question, answer });
+    }
 
     return res.status(200).json({ answers });
 
