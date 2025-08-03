@@ -4,8 +4,8 @@ const path = require('path');
 
 require('dotenv').config({ path: "../env/.env" });
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-console.log("OpenRouter API Key:", OPENROUTER_API_KEY);
+OPENROUTER_API_KEY="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"
+
 
 if (!OPENROUTER_API_KEY) {
   throw new Error("Missing OpenRouter API key. Check your environment variables.");
