@@ -4,7 +4,7 @@ const path = require('path');
 
 require('dotenv').config({ path: "../env/.env" });
 
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ;
 
 //uptodat
 if (!OPENROUTER_API_KEY) {
@@ -25,7 +25,7 @@ exports.queryOpenRouter = async (textChunks, question) => {
   const headers = {
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'http://localhost:8000', // change if deployed
+    'HTTP-Referer': 'https://bajaj-hackthon.vercel.app/', // change if deployed
     'X-Title': 'GraphRAG AI'
   };
 
