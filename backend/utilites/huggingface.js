@@ -15,7 +15,7 @@ exports.queryOpenRouter = async (textChunks, question) => {
   const prompt = `Document:\n${textChunks.join('\n\n')}\n\nQuestion: ${question}`;
 
   const payload = {
-    model: 'tngtech/deepseek-r1t2-chimera:free', 
+    model: 'mistralai/mistral-7b-instruct:free', 
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
       { role: 'user', content: prompt }
