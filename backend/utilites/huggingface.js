@@ -4,7 +4,7 @@ const path = require('path');
 
 require('dotenv').config({ path: "../env/.env" });
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ; 
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 //uptodat
 if (!OPENROUTER_API_KEY) {
@@ -16,7 +16,7 @@ exports.queryOpenRouter = async (textChunks, question) => {
   
 
   const payload = {
-    model: 'deepseek/deepseek-chat-v3-0324:free', 
+    model: 'deepseek/deepseek-r1-0528:free', 
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
       { role: 'user', content: prompt }
