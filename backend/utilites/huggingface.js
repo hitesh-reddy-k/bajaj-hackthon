@@ -4,9 +4,8 @@ const path = require('path');
 
 require('dotenv').config({ path: "../env/.env" });
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_API_KEY = "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";
 
-//uptodat
 if (!OPENROUTER_API_KEY) {
   throw new Error("Missing OpenRouter API key. Check your environment variables.");
 }
@@ -16,7 +15,7 @@ exports.queryOpenRouter = async (textChunks, question) => {
   
 
   const payload = {
-    model: 'deepseek/deepseek-r1-0528:free', 
+    model: 'z-ai/glm-4.5-air:free', 
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
       { role: 'user', content: prompt }
