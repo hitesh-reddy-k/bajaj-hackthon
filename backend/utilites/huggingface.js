@@ -4,7 +4,7 @@ const path = require('path');
 
 require('dotenv').config({ path: "../env/.env" });
 
-const OPENROUTER_API_KEY = "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"; 
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ; 
 
 //uptodat
 if (!OPENROUTER_API_KEY) {
