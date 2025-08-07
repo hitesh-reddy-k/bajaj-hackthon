@@ -4,7 +4,7 @@ const path = require('path');
 
 require('dotenv').config({ path: "../env/.env" });
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // Ensure this is set in your .env file
+const OPENROUTER_API_KEY = "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"; 
 
 //uptodat
 if (!OPENROUTER_API_KEY) {
@@ -13,22 +13,23 @@ if (!OPENROUTER_API_KEY) {
 
 exports.queryOpenRouter = async (textChunks, question) => {
   const prompt = `Document:\n${textChunks.join('\n\n')}\n\nQuestion: ${question}`;
+  
 
   const payload = {
-    model: 'mistralai/mistral-7b-instruct:free', 
+    model: 'deepseek/deepseek-chat-v3-0324:free', 
     messages: [
       { role: 'system', content: 'You are a helpful assistant.' },
       { role: 'user', content: prompt }
     ]
   };
-
   const headers = {
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://bajaj-hackthon.vercel.app/', // change if deployed
+    'HTTP-Referer': 'https://bajaj-hackthon.vercel.app/', 
     'X-Title': 'GraphRAG AI'
   };
 
+  
   try {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
